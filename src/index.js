@@ -1,4 +1,6 @@
 import html from './index.html'
+import { verifyTurnstileToken } from './turnstile.js';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -18,6 +20,20 @@ export default {
       const formData = await request.formData();
       const prompt = formData.get("prompt");
       return await generateImage(prompt, env);
+    }
+    if (request.method === "POST" && url.pathname === "/auth") {
+      const formData = await request.formData();
+      const token = formData.get("cf-turnstile-response");
+      const ip = request.headers.get('CF-Connecting-IP');
+
+      const isValid = await verifyTurnstileToken(token, env.TURNSTILE_SECRET_KEY, ip);
+
+      if (isValid) {
+        const response = new Response("Authenticated", { status: 200 });
+        // JWTをセット（後述）
+        return response;
+      }
+      return new Response("Unauthorized", { status: 401 });
     }
     return new Response("Not found", { status: 404 });
   },
