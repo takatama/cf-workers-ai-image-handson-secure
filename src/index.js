@@ -1,15 +1,49 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
+import html from './index.html'
 export default {
 	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
+		const url = new URL(request.url);
+		if (url.pathname === "/") {
+			return new Response(html, {
+				headers: {
+					"content-type": "text/html;charset=UTF-8",
+				},
+			});
+		}
+		if (request.method === "POST" && url.pathname === "/translate") {
+			const formData = await request.formData();
+			const prompt = formData.get("prompt");
+			return await translatePrompt(prompt, env);
+		}
+		return new Response("Not found", { status: 404 });
 	},
 };
+
+async function translatePrompt(prompt, env) {
+	const messages = [
+		{
+			role: "system",
+			content: `
+  Translate the following Japanese text into a concise and vivid English prompt for image generation. Follow the specified artistic style closely (e.g., oil painting, watercolor, pop art) and avoid adding style elements not specified. Include only the essential subjects, actions, and visual details relevant to the style. Output the prompt text only, without quotation marks or additional comments.
+  `,
+		},
+		{ role: "user", content: prompt },
+	];
+
+	try {
+		const stream = await env.AI.run("@cf/meta/llama-3.2-3b-instruct", {
+			messages,
+			stream: true,
+		});
+		return new Response(stream, {
+			headers: { "Content-Type": "text/event-stream" },
+		});
+	} catch (error) {
+		console.error("翻訳エラー:", error);
+		return new Response(JSON.stringify({ error: "翻訳に失敗しました。" }), {
+			status: 500,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}
+}

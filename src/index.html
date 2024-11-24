@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI画像生成ハンズオン</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.3/new.min.css">
+</head>
+
+<body>
+    <h3>何をどんな風に描きたいですか？</h3>
+    <p>多彩な表現を楽しもう！ポップアート風、油絵風、水彩画風、サイバーパンク風など</p>
+    <textarea id="prompt" placeholder="例: かわいい猫のイラスト" style="width: 100%"></textarea>
+    <button id="translate-btn" onclick="translateText()">
+        英語に翻訳
+    </button>
+    <p id="translate-error-message" style="color: red;"></p>
+    <h3 for="translated-prompt">翻訳結果</h3>
+    <textarea id="translated-prompt" placeholder="ここに英語の翻訳結果が表示されます"
+        style="width: 100%; field-sizing: content;"></textarea>
+    <script>
+        async function handleEventStream(response, textarea) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let text = "";
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                chunk.split("\n").forEach((line) => {
+                    if (line.startsWith("data: ")) {
+                        const data = line.replace("data: ", "");
+                        if (data === "[DONE]") return;
+                        try {
+                            const jsonData = JSON.parse(data);
+                            text += jsonData.response;
+                            textarea.value = text;
+                        } catch (error) {
+                            // JSONデータが壊れている場合は無視する
+                        }
+                    }
+                });
+            }
+        }
+
+        async function translateText() {
+            const translateBtn = document.getElementById("translate-btn");
+            const errorMessage = document.getElementById("translate-error-message");
+            const promptInput = document.getElementById("prompt");
+
+            translateBtn.disabled = true;
+            errorMessage.style.display = "none";
+            const formData = new FormData();
+            formData.set("prompt", promptInput.value);
+
+            try {
+                const response = await fetch(`/translate`, {
+                    method: "POST",
+                    body: formData,
+                    credentials: "include",
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error("エラー:", errorData.error);
+                }
+
+                const translatedPrompt = document.getElementById("translated-prompt");
+                await handleEventStream(response, translatedPrompt);
+            } catch (error) {
+                console.error("エラー: ", error);
+                errorMessage.textContent = "翻訳に失敗しました。もう一度試してください。";
+                errorMessage.style.display = "block";
+            } finally {
+                translateBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
