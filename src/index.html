@@ -6,20 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI画像生成ハンズオン</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.3/new.min.css">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onLoadTurnstile" defer></script>
 </head>
 
 <body>
+  <div id="turnstile-widget"></div>
   <h3>何をどんな風に描きたいですか？</h3>
   <p>多彩な表現を楽しもう！ポップアート風、油絵風、水彩画風、サイバーパンク風など</p>
   <textarea id="prompt" placeholder="例: かわいい猫のイラスト" style="width: 100%"></textarea>
-  <button id="translate-btn" onclick="translateText()">
+  <button id="translate-btn" onclick="translateText()" disabled>
     英語に翻訳
   </button>
   <p id="translate-error-message" style="color: red;"></p>
   <h3 for="translated-prompt">翻訳結果</h3>
   <textarea id="translated-prompt" placeholder="ここに英語の翻訳結果が表示されます"
     style="width: 100%; field-sizing: content;"></textarea>
-  <button id="gen-image-btn" onclick="generateImage()">
+  <button id="gen-image-btn" onclick="generateImage()" disabled>
     画像を生成
   </button>
   <p id="gen-image-error-message" class="error-message" style="color: red;"></p>
@@ -27,6 +29,9 @@
     <img id="generated-image" src="" alt="Generated Image" style="display: none;" />
   </div>
   <script>
+    const translateBtn = document.getElementById("translate-btn");
+    const genImageBtn = document.getElementById("gen-image-btn");
+    
     async function handleEventStream(response, textarea) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
@@ -54,11 +59,10 @@
     }
 
     async function translateText() {
-      const button = document.getElementById("translate-btn");
       const errorMessage = document.getElementById("translate-error-message");
       const promptInput = document.getElementById("prompt");
 
-      button.disabled = true;
+      translateBtn.disabled = true;
       errorMessage.style.display = "none";
       const formData = new FormData();
       formData.set("prompt", promptInput.value);
@@ -80,13 +84,12 @@
         errorMessage.textContent = "翻訳に失敗しました。もう一度試してください。";
         errorMessage.style.display = "block";
       } finally {
-        button.disabled = false;
+        translateBtn.disabled = false;
       }
     }
 
     async function generateImage() {
-      const button = document.getElementById("gen-image-btn");
-      button.disabled = true;
+      genImageBtn.disabled = true;
       const errorMessage = document.getElementById("gen-image-error-message");
       errorMessage.style.display = "none";
       const translatedPrompt = document.getElementById("translated-prompt");
@@ -114,8 +117,45 @@
           "画像生成に失敗しました。もう一度試すか、プロンプトを変えてください。";
         errorMessage.style.display = "block";
       } finally {
-        button.disabled = false;
+        genImageBtn.disabled = false;
       }
+    }
+
+    const SITE_KEY = '0x4AAAAAAA0xruPPz0mcXmBX';
+    function onLoadTurnstile() {
+      turnstile.render('#turnstile-widget', {
+        sitekey: SITE_KEY,
+        callback: onTurnstileSuccess,
+        'error-callback': onTurnstileError,
+        'expired-callback': onTurnstileExpired,
+      });
+    }
+
+    async function onTurnstileSuccess(token) {
+      const formData = new FormData();
+      formData.append('cf-turnstile-response', token);
+
+      const response = await fetch('/auth', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        translateBtn.disabled = false;
+        genImageBtn.disabled = false;
+      } else {
+        alert('認証に失敗しました。再度お試しください。');
+      }
+    }
+
+    function onTurnstileError() {
+      alert('Turnstileエラーが発生しました。再度お試しください。');
+    }
+
+    function onTurnstileExpired() {
+      translateBtn.disabled = true;
+      genImageBtn.disabled = true;
+      turnstile.reset();
     }
   </script>
 </body>
