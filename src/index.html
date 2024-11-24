@@ -31,7 +31,7 @@
   <script>
     const translateBtn = document.getElementById("translate-btn");
     const genImageBtn = document.getElementById("gen-image-btn");
-    
+
     async function handleEventStream(response, textarea) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
@@ -73,9 +73,11 @@
           body: formData,
         });
 
-        if (!response.ok) {
-          throw new Error(`エラー ${response.status} ${response.statusText}`);
-        }
+        // if (!response.ok) {
+        //   throw new Error(`エラー ${response.status} ${response.statusText}`);
+        // }
+        verifyResponse(response);
+
 
         const translatedPrompt = document.getElementById("translated-prompt");
         await handleEventStream(response, translatedPrompt);
@@ -102,9 +104,10 @@
           body: formData,
         });
 
-        if (!response.ok) {
-          throw new Error(`エラー ${response.status} ${response.statusText}`);
-        }
+        // if (!response.ok) {
+        //   throw new Error(`エラー ${response.status} ${response.statusText}`);
+        // }
+        verifyResponse(response);
 
         const imageBlob = await response.blob();
         const imageUrl = URL.createObjectURL(imageBlob);
@@ -156,6 +159,15 @@
       translateBtn.disabled = true;
       genImageBtn.disabled = true;
       turnstile.reset();
+    }
+
+    function verifyResponse(response) {
+      if (response.ok) return;
+      if (response.status === 401) {
+        onTurnstileExpired();
+        throw new Error('セッションが無効です。再度認証してください。');
+      }
+      throw new Error(`エラー ${response.status} ${response.statusText}`);
     }
   </script>
 </body>

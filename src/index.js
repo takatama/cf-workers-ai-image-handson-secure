@@ -1,5 +1,6 @@
 import html from './index.html'
 import { verifyTurnstileToken } from './turnstile.js';
+import { createSessionCookie, verifySession } from './session.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -12,11 +13,15 @@ export default {
       });
     }
     if (request.method === "POST" && url.pathname === "/translate") {
+      const isValidSession = await verifySession(request, env);
+      if (!isValidSession) return new Response("Unauthorized", { status: 401 });
       const formData = await request.formData();
       const prompt = formData.get("prompt");
       return await translatePrompt(prompt, env);
     }
     if (request.method === "POST" && url.pathname === "/generate-image") {
+      const isValidSession = await verifySession(request, env);
+      if (!isValidSession) return new Response("Unauthorized", { status: 401 });
       const formData = await request.formData();
       const prompt = formData.get("prompt");
       return await generateImage(prompt, env);
@@ -30,7 +35,9 @@ export default {
 
       if (isValid) {
         const response = new Response("Authenticated", { status: 200 });
-        // JWTをセット（後述）
+        const secret = new TextEncoder().encode(env.JWT_SECRET);
+        const cookie = await createSessionCookie({ authenticated: true }, secret);
+        response.headers.append('Set-Cookie', cookie);
         return response;
       }
       return new Response("Unauthorized", { status: 401 });

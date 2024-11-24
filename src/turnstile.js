@@ -9,6 +9,5 @@ export async function verifyTurnstileToken(token, secretKey, ip) {
     body: formData,
   });
   const data = await response.json();
-  console.log(data);
   return data.success;
 }
