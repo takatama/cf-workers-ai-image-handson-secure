@@ -61,10 +61,11 @@ async function generateImage(prompt, env) {
       "@cf/black-forest-labs/flux-1-schnell",
       inputs
     );
-    const imageUrl = `data:image/jpeg;base64,${response.image}`;
-    return new Response(JSON.stringify({ imageUrl }), {
+    const binaryString = atob(response.image);
+    const img = Uint8Array.from(binaryString, (m) => m.codePointAt(0));
+    return new Response(img, {
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'image/jpeg',
       },
     });
   } catch (error) {

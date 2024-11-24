@@ -103,14 +103,11 @@
           throw new Error(`エラー ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
-        if (data.imageUrl) {
-          const img = document.getElementById("generated-image");
-          img.src = data.imageUrl;
-          img.style.display = "block";
-        } else {
-          throw new Error("画像データが取得できませんでした。");
-        }
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+        const img = document.getElementById("generated-image");
+        img.src = imageUrl;
+        img.style.display = "block";
       } catch (error) {
         console.error("エラー: ", error);
         errorMessage.textContent =
