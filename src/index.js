@@ -1,6 +1,7 @@
 import html from './index.html'
 import { verifyTurnstileToken } from './turnstile.js';
 import { createSessionCookie, verifySession } from './session.js';
+import { verifyOrigin } from './origin.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -11,6 +12,10 @@ export default {
           "content-type": "text/html;charset=UTF-8",
         },
       });
+    }
+    const allowedOrigin = env.ALLOWED_ORIGIN;
+    if (request.method === "POST" && !verifyOrigin(request, allowedOrigin)) {
+      return new Response("Bad Request", { status: 400 });
     }
     if (request.method === "POST" && url.pathname === "/translate") {
       const isValidSession = await verifySession(request, env);
