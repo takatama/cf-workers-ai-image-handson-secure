@@ -1,0 +1,16 @@
+textarea {
+  width: 100%;
+  field-sizing: content;
+}
+
+.error-message {
+  color: red;
+}
+
+#image-container {
+  margin-top: 1rem;
+}
+
+#generated-image {
+  display: none;  
+}
