@@ -1,18 +1,11 @@
-import html from './index.html'
 import { verifyTurnstileToken } from './turnstile.js';
 import { createSessionCookie, verifySession } from './session.js';
 import { verifyOrigin } from './origin.js';
+import { sanitize } from './sanitize.js';
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname === "/") {
-      return new Response(html, {
-        headers: {
-          "content-type": "text/html;charset=UTF-8",
-        },
-      });
-    }
     const allowedOrigin = env.ALLOWED_ORIGIN;
     if (request.method === "POST" && !verifyOrigin(request, allowedOrigin)) {
       return new Response("Bad Request", { status: 400 });
@@ -21,14 +14,14 @@ export default {
       const isValidSession = await verifySession(request, env);
       if (!isValidSession) return new Response("Unauthorized", { status: 401 });
       const formData = await request.formData();
-      const prompt = formData.get("prompt");
+      const prompt = sanitize(formData.get("prompt"));
       return await translatePrompt(prompt, env);
     }
     if (request.method === "POST" && url.pathname === "/generate-image") {
       const isValidSession = await verifySession(request, env);
       if (!isValidSession) return new Response("Unauthorized", { status: 401 });
       const formData = await request.formData();
-      const prompt = formData.get("prompt");
+      const prompt = sanitize(formData.get("prompt"));
       return await generateImage(prompt, env);
     }
     if (request.method === "POST" && url.pathname === "/auth") {
@@ -47,7 +40,7 @@ export default {
       }
       return new Response("Unauthorized", { status: 401 });
     }
-    return new Response("Not found", { status: 404 });
+    return env.ASSETS.fetch(request);
   },
 };
 
